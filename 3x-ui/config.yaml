@@ -17,5 +17,8 @@ ports:
   2053/tcp: 2053
 ports_description:
   2053/tcp: Веб-панель 3x-ui
+webui: http://[HOST]:2053/
+
+
 map:
   - share:rw
