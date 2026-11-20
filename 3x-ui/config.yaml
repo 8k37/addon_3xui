@@ -1,23 +1,21 @@
-name: 3X-UI
+name: 3x-ui
 version: "3.11.0"
-slug: 3xui
-description: 3X-UI — панель Xray с веб-интерфейсом (Vmess, Vless, Trojan, Shadowsocks, WireGuard)
+slug: 3x_ui
+description: 3x-ui — панель управления Xray (Vmess, Vless, Trojan, Shadowsocks, WireGuard)
 url: https://github.com/MHSanaei/3x-ui
 arch:
-  - aarch64
   - amd64
-  - armhf
+  - aarch64
   - armv7
+  - armhf
   - i386
 init: false
 startup: services
 boot: auto
 host_network: true
-hassio_api: false
+ports:
+  2053/tcp: 2053
+ports_description:
+  2053/tcp: Веб-панель 3x-ui
 map:
   - share:rw
-options:
-  panel_port: 2053
-schema:
-  panel_port: port
-image: ghcr.io/8k37/3xui-{arch}

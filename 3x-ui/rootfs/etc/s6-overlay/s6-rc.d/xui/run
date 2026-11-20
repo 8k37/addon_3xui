@@ -1,25 +1,11 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv sh
 set -e
 
-PANEL_PORT="$(bashio::config 'panel_port' '2053')"
-
-mkdir -p /data /etc/x-ui /app/log
-
-# Fresh start: x-ui creates its DB on first launch; apply the configured port
-if [ ! -f /etc/x-ui/x-ui.db ]; then
-    bashio::log.info "Initializing 3x-ui database, panel port ${PANEL_PORT}..."
-    /app/x-ui setting -port "${PANEL_PORT}" >/dev/null 2>&1 || true
+# Persist 3x-ui database (panel settings, users, inbounds) across restarts/rebuilds
+mkdir -p /data/x-ui
+if [ ! -e /etc/x-ui ]; then
+  ln -sfn /data/x-ui /etc/x-ui
 fi
 
-# Keep the panel port in sync with add-on options
-if [ -f /etc/x-ui/x-ui.db ]; then
-    CURRENT="$(sqlite3 /etc/x-ui/x-ui.db "SELECT value FROM settings WHERE key='webPort';" 2>/dev/null || true)"
-    if [ -n "${CURRENT}" ] && [ "${CURRENT}" != "${PANEL_PORT}" ]; then
-        bashio::log.info "Updating panel port: ${CURRENT} -> ${PANEL_PORT}"
-        sqlite3 /etc/x-ui/x-ui.db "UPDATE settings SET value='${PANEL_PORT}' WHERE key='webPort';"
-    fi
-fi
-
-bashio::log.info "Starting 3x-ui, panel: http://<host>:${PANEL_PORT}/"
-cd /app
-exec /app/x-ui
+cd /app/x-ui
+exec ./x-ui
