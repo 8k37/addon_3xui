@@ -26,3 +26,54 @@
 ## Версия 3x-ui
 
 Аддон собирается из официального релиза [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui/releases). Версия задаётся в `3x-ui/build.yaml` (аргумент `XUI_VERSION`).
+
+## Автовыбор самого быстрого сервера (balancer + observatory)
+
+3x-ui — панель сервера, поэтому переключение между несколькими серверами настраивается в конфиге Xray (в панели: «Настройки Xray» → редактирование конфига). Xray умеет сам периодически проверять узлы (пинг и реальную скорость загрузки), выбирать быстрый и живой и **не переключаться, пока текущий работает** — переключение происходит только когда узел перестаёт отвечать.
+
+Пример: два и более outbound'ов с тегами `node-a`, `node-b` и автоматический выбор:
+
+```json
+"observatory": {
+  "subjectSelector": ["node"],
+  "probeURL": "https://www.google.com/generate_204",
+  "probeInterval": "1m",
+  "enableConcurrency": true
+},
+"burstObservatory": {
+  "subjectSelector": ["node"],
+  "pingConfig": {
+    "destination": "https://www.google.com/generate_204",
+    "connectivity": "https://www.google.com/generate_204",
+    "interval": "2m",
+    "connectTimeout": "5s",
+    "timeout": "10s",
+    "sampling": 2
+  }
+},
+"balancers": [
+  {
+    "tag": "auto",
+    "selector": ["node"],
+    "strategy": { "type": "leastPing" }
+  }
+]
+```
+
+В правилах маршрутизации (`routing.rules`) вместо `outboundTag` укажите `balancerTag: "auto"`:
+
+```json
+{
+  "type": "field",
+  "network": "tcp,udp",
+  "balancerTag": "auto"
+}
+```
+
+Как это работает:
+
+- `observatory` — проверяет доступность узлов (пинг по probeURL), результаты используются стратегией `leastPing` — идёт через узел с минимальной задержкой.
+- `burstObservatory` — измеряет **реальную скорость** (пробная загрузка), а не только пинг; стратегия `leastLoad` отбирает узлы по скорости/загрузке. Если нужен выбор именно по скорости — используйте её вместо `leastPing`.
+- Узел проверяется каждые `probeInterval` / `interval`; пока проверка проходит — маршрут не меняется. Если узел перестал отвечать — трафик автоматически уходит на следующий живой.
+
+Альтернатива: если переключать серверы нужно на клиенте (а не на этом сервере), это умеют клиенты — например, `urltest`-группа в sing-box/clash или авто-выбор в v2rayN/Hiddify: они делают то же самое (периодический тест скорости + прилипание к рабочему узлу).
